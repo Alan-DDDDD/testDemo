@@ -1,6 +1,6 @@
 getAccountData();
 async function getAccountData(){
-    var response = await fetch("https://61.222.180.215/api/Accoun");
+    var response = await fetch("https://61.222.180.215/api/Account");
     var source = await response.json();
     console.log(source);
     if(source.status == 0){

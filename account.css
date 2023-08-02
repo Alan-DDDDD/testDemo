@@ -1,0 +1,11 @@
+#account {
+    border: 2px solid black;
+}
+
+#account tbody {
+    text-align: center;
+}
+
+#account tbody td{
+    border:1px solid gray;
+}

@@ -7,62 +7,62 @@
 </head>
 <body>
     <input type="text" id="barcodeInput" placeholder="Click here to scan barcode" autofocus>
-
     <video id="camera" width="300" height="200" style="display: none;"></video>
+    <canvas id="canvas" width="300" height="200" style="display: none;"></canvas>
 
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
     <script>
         const barcodeInput = document.getElementById('barcodeInput');
         const camera = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        let stream;
 
+        // 當 input 聚焦時啟動相機
         barcodeInput.addEventListener('focus', async () => {
             try {
-                // 開啟相機
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 camera.srcObject = stream;
                 camera.style.display = 'block';
-
-                // 開始播放影片
                 camera.play();
 
-                // 在此使用條碼掃描庫（例如 jsQR 或其他庫）處理條碼
-                // 假設使用 jsQR 進行條碼掃描
-                const context = camera.getContext('2d');
-
-                function scanBarcode() {
-                    if (camera.readyState === camera.HAVE_ENOUGH_DATA) {
-                        context.drawImage(camera, 0, 0, camera.width, camera.height);
-                        const imageData = context.getImageData(0, 0, camera.width, camera.height);
-                        
-                        const code = jsQR(imageData.data, imageData.width, imageData.height);
-                        if (code) {
-                            barcodeInput.value = code.data;  // 將條碼數據顯示在輸入框
-                            stopCamera();
-                        }
-                    }
-                    requestAnimationFrame(scanBarcode);
-                }
-
-                scanBarcode();
-
+                // 持續掃描條碼
+                requestAnimationFrame(scanBarcode);
             } catch (error) {
                 console.error("相機無法啟用", error);
             }
         });
 
+        // 掃描條碼
+        function scanBarcode() {
+            if (camera.readyState === camera.HAVE_ENOUGH_DATA) {
+                // 將影片畫面繪製到 Canvas 上
+                context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 使用 jsQR 來讀取條碼
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code) {
+                    barcodeInput.value = code.data;  // 顯示條碼數據於輸入框
+                    stopCamera();  // 停止相機
+                    return;
+                }
+            }
+            requestAnimationFrame(scanBarcode);
+        }
+
         // 停止相機並隱藏
         function stopCamera() {
-            let stream = camera.srcObject;
-            let tracks = stream.getTracks();
-            tracks.forEach(track => track.stop());
-            camera.srcObject = null;
-            camera.style.display = 'none';
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+                camera.srcObject = null;
+                camera.style.display = 'none';
+            }
         }
 
         // 當輸入框失去焦點時停止相機
         barcodeInput.addEventListener('blur', stopCamera);
     </script>
-
-    <!-- 包含 jsQR 或其他條碼讀取庫 -->
-    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
 </body>
 </html>

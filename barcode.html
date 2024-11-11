@@ -3,66 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner</title>
+    <title>Barcode Scanner with BarcodeDetector API</title>
 </head>
 <body>
     <input type="text" id="barcodeInput" placeholder="Click here to scan barcode" autofocus>
     <video id="camera" width="300" height="200" style="display: none;"></video>
-    <canvas id="canvas" width="300" height="200" style="display: none;"></canvas>
 
-    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
     <script>
         const barcodeInput = document.getElementById('barcodeInput');
         const camera = document.getElementById('camera');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
-        let stream;
 
-        // 當 input 聚焦時啟動相機
-        barcodeInput.addEventListener('focus', async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        async function startBarcodeScanner() {
+            if ('BarcodeDetector' in window) {
+                const barcodeDetector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'qr_code'] });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 camera.srcObject = stream;
                 camera.style.display = 'block';
                 camera.play();
 
-                // 持續掃描條碼
-                requestAnimationFrame(scanBarcode);
-            } catch (error) {
-                console.error("相機無法啟用", error);
-            }
-        });
-
-        // 掃描條碼
-        function scanBarcode() {
-            if (camera.readyState === camera.HAVE_ENOUGH_DATA) {
-                // 將影片畫面繪製到 Canvas 上
-                context.drawImage(camera, 0, 0, canvas.width, canvas.height);
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                
-                // 使用 jsQR 來讀取條碼
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-                if (code) {
-                    barcodeInput.value = code.data;  // 顯示條碼數據於輸入框
-                    stopCamera();  // 停止相機
-                    return;
-                }
-            }
-            requestAnimationFrame(scanBarcode);
-        }
-
-        // 停止相機並隱藏
-        function stopCamera() {
-            if (stream) {
-                const tracks = stream.getTracks();
-                tracks.forEach(track => track.stop());
-                camera.srcObject = null;
-                camera.style.display = 'none';
+                const scanBarcode = async () => {
+                    if (camera.readyState === camera.HAVE_ENOUGH_DATA) {
+                        try {
+                            const barcodes = await barcodeDetector.detect(camera);
+                            if (barcodes.length > 0) {
+                                barcodeInput.value = barcodes[0].rawValue; // 顯示條碼數據於輸入框
+                                stopScanner();
+                            }
+                        } catch (error) {
+                            console.error("BarcodeDetector 錯誤:", error);
+                        }
+                    }
+                    requestAnimationFrame(scanBarcode);
+                };
+                scanBarcode();
+            } else {
+                alert("您的瀏覽器不支援 BarcodeDetector API");
             }
         }
 
-        // 當輸入框失去焦點時停止相機
-        barcodeInput.addEventListener('blur', stopCamera);
+        function stopScanner() {
+            let stream = camera.srcObject;
+            let tracks = stream.getTracks();
+            tracks.forEach(track => track.stop());
+            camera.srcObject = null;
+            camera.style.display = 'none';
+        }
+
+        barcodeInput.addEventListener('focus', startBarcodeScanner);
+        barcodeInput.addEventListener('blur', stopScanner);
     </script>
 </body>
 </html>
